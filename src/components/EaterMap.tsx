@@ -61,10 +61,17 @@ function googleMapsUrl(restaurant: Restaurant): string {
   return `https://www.google.com/maps/search/?api=1&query=${query}`
 }
 
+function getPopupWidth(mapEl: HTMLElement | null): number {
+  if (!mapEl) return 240
+  const w = mapEl.clientWidth
+  return Math.round(Math.min(300, Math.max(200, w * 0.38)))
+}
+
 function buildInfoWindowContent(
   restaurant: Restaurant,
   accentColor: string,
   photoState: PhotoState,
+  popupWidth: number,
   photoUrl?: string,
 ): string {
   let photoBlock = ""
@@ -77,7 +84,7 @@ function buildInfoWindowContent(
   const mapsUrl = googleMapsUrl(restaurant)
 
   return `
-    <div class="map-info-window">
+    <div class="map-info-window" style="width:${popupWidth}px">
       <div class="map-info-title" style="color:${accentColor}">${escapeHtml(restaurant.name)}</div>
       <div class="map-info-kicker">${escapeHtml(restaurant.establishmentType)} · ${escapeHtml(restaurant.price)}</div>
       <a class="map-info-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
@@ -86,10 +93,13 @@ function buildInfoWindowContent(
   `
 }
 
-function pickPhotoUrl(photos: google.maps.places.PlacePhoto[]): string | null {
+function pickPhotoUrl(
+  photos: google.maps.places.PlacePhoto[],
+  popupWidth: number,
+): string | null {
   const photo = photos[0]
   if (!photo) return null
-  return photo.getUrl({ maxWidth: 440, maxHeight: 240 })
+  return photo.getUrl({ maxWidth: popupWidth * 2, maxHeight: 480 })
 }
 
 export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
@@ -100,6 +110,12 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
   const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null)
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
   const photoCacheRef = useRef<Map<number, string>>(new Map())
+  const popupContextRef = useRef<{
+    index: number
+    photoState: PhotoState
+    photoUrl?: string
+  } | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const listRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
@@ -132,7 +148,37 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
         infoWindowRef.current = new g.maps.InfoWindow({
           pixelOffset: new g.maps.Size(0, -4),
           headerDisabled: true,
+          maxWidth: getPopupWidth(mapRef.current) + 32,
         })
+
+        const syncPopupSize = () => {
+          const width = getPopupWidth(mapRef.current)
+          infoWindowRef.current?.setOptions({ maxWidth: width + 32 })
+          const ctx = popupContextRef.current
+          const infoWindow = infoWindowRef.current
+          const map = mapInstance.current
+          const marker = ctx
+            ? markersRef.current[ctx.index]
+            : undefined
+          const restaurant = ctx ? restaurants[ctx.index] : undefined
+          if (!ctx || !infoWindow || !map || !marker || !restaurant) return
+          infoWindow.setContent(
+            buildInfoWindowContent(
+              restaurant,
+              accentColor,
+              ctx.photoState,
+              width,
+              ctx.photoUrl,
+            ),
+          )
+          if (infoWindow.getMap()) {
+            infoWindow.open({ map, anchor: marker })
+          }
+        }
+
+        const resizeObserver = new ResizeObserver(syncPopupSize)
+        resizeObserver.observe(mapRef.current)
+        resizeObserverRef.current = resizeObserver
 
         markersRef.current = restaurants.map((r, i) => {
           const marker = new g.maps.Marker({
@@ -152,6 +198,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
     return () => {
       cancelled = true
       infoWindowRef.current?.close()
+      resizeObserverRef.current?.disconnect()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, JSON.stringify(restaurants)])
@@ -173,9 +220,19 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
 
     if (!r || !marker || !map || !infoWindow) return
 
+    const popupWidth = getPopupWidth(mapRef.current)
+
     const openPopup = (photoState: PhotoState, photoUrl?: string) => {
+      popupContextRef.current = { index: selectedIndex, photoState, photoUrl }
+      infoWindow.setOptions({ maxWidth: popupWidth + 32 })
       infoWindow.setContent(
-        buildInfoWindowContent(r, accentColor, photoState, photoUrl),
+        buildInfoWindowContent(
+          r,
+          accentColor,
+          photoState,
+          popupWidth,
+          photoUrl,
+        ),
       )
       infoWindow.open({ map, anchor: marker })
     }
@@ -210,7 +267,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
               status === google.maps.places.PlacesServiceStatus.OK &&
               place?.photos
             ) {
-              finish(pickPhotoUrl(place.photos))
+              finish(pickPhotoUrl(place.photos, popupWidth))
             } else {
               finish(null)
             }
@@ -230,7 +287,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
               status === google.maps.places.PlacesServiceStatus.OK &&
               results?.[0]?.photos
             ) {
-              finish(pickPhotoUrl(results[0].photos))
+              finish(pickPhotoUrl(results[0].photos, popupWidth))
               return
             }
 
@@ -248,7 +305,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
                     google.maps.places.PlacesServiceStatus.OK &&
                   place?.photos
                 ) {
-                  finish(pickPhotoUrl(place.photos))
+                  finish(pickPhotoUrl(place.photos, popupWidth))
                 } else {
                   finish(null)
                 }
