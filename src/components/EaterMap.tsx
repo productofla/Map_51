@@ -18,7 +18,7 @@ function escapeHtml(text: string): string {
 
 function loadGoogleMaps(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve()
+    if (window.google?.maps?.places) return resolve()
 
     const existing = document.getElementById("gmaps-script")
     if (existing) {
@@ -28,7 +28,7 @@ function loadGoogleMaps(apiKey: string): Promise<void> {
 
     const script = document.createElement("script")
     script.id = "gmaps-script"
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
     script.async = true
     script.onload = () => resolve()
     script.onerror = reject
@@ -49,33 +49,34 @@ function pinIcon(selected: boolean, accentColor: string): google.maps.Icon {
   }
 }
 
+type PhotoState = "loading" | "ready" | "empty"
+
 function buildInfoWindowContent(
   restaurant: Restaurant,
-  apiKey: string,
   accentColor: string,
+  photoState: PhotoState,
+  photoUrl?: string,
 ): string {
-  const query = encodeURIComponent(
-    `${restaurant.name}, ${restaurant.address || `${restaurant.lat},${restaurant.lng}`}`,
-  )
-  const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${query}&zoom=17`
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`
+  let photoBlock = ""
+  if (photoState === "loading") {
+    photoBlock = `<div class="map-info-photo map-info-photo-loading">Loading photo…</div>`
+  } else if (photoState === "ready" && photoUrl) {
+    photoBlock = `<img class="map-info-photo" src="${photoUrl}" alt="${escapeHtml(restaurant.name)}" />`
+  }
 
   return `
     <div class="map-info-window">
       <div class="map-info-title" style="color:${accentColor}">${escapeHtml(restaurant.name)}</div>
       <div class="map-info-meta">${escapeHtml(restaurant.neighborhood)} · ${escapeHtml(restaurant.price)}</div>
-      <iframe
-        class="map-info-embed"
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"
-        src="${embedUrl}"
-        title="${escapeHtml(restaurant.name)} on Google Maps"
-      ></iframe>
-      <a class="map-info-link" style="color:${accentColor}" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">
-        Open in Google Maps →
-      </a>
+      ${photoBlock}
     </div>
   `
+}
+
+function pickPhotoUrl(photos: google.maps.places.PlacePhoto[]): string | null {
+  const photo = photos[0]
+  if (!photo) return null
+  return photo.getUrl({ maxWidth: 440, maxHeight: 240 })
 }
 
 export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
@@ -83,7 +84,9 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<google.maps.Marker[]>([])
+  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null)
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
+  const photoCacheRef = useRef<Map<number, string>>(new Map())
   const listRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
@@ -108,6 +111,10 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
             { featureType: "transit", stylers: [{ visibility: "off" }] },
           ],
         })
+
+        placesServiceRef.current = new g.maps.places.PlacesService(
+          mapInstance.current,
+        )
 
         infoWindowRef.current = new g.maps.InfoWindow({
           pixelOffset: new g.maps.Size(0, -4),
@@ -142,19 +149,104 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
 
     const r = restaurants[selectedIndex]
     const marker = markersRef.current[selectedIndex]
+    const map = mapInstance.current
+    const infoWindow = infoWindowRef.current
+    const placesService = placesServiceRef.current
 
-    if (r && mapInstance.current) {
-      mapInstance.current.panTo({ lat: r.lat, lng: r.lng })
+    if (r && map) {
+      map.panTo({ lat: r.lat, lng: r.lng })
     }
 
-    if (r && marker && mapInstance.current && infoWindowRef.current && apiKey) {
-      infoWindowRef.current.setContent(
-        buildInfoWindowContent(r, apiKey, accentColor),
+    if (!r || !marker || !map || !infoWindow) return
+
+    const openPopup = (photoState: PhotoState, photoUrl?: string) => {
+      infoWindow.setContent(
+        buildInfoWindowContent(r, accentColor, photoState, photoUrl),
       )
-      infoWindowRef.current.open({
-        map: mapInstance.current,
-        anchor: marker,
-      })
+      infoWindow.open({ map, anchor: marker })
+    }
+
+    const cachedPhoto = photoCacheRef.current.get(selectedIndex)
+    if (r.photoUrl) {
+      photoCacheRef.current.set(selectedIndex, r.photoUrl)
+      openPopup("ready", r.photoUrl)
+    } else if (cachedPhoto) {
+      openPopup("ready", cachedPhoto)
+    } else if (!placesService || !apiKey) {
+      openPopup("empty")
+    } else {
+      openPopup("loading")
+      let cancelled = false
+
+      const finish = (url: string | null) => {
+        if (cancelled) return
+        if (url) {
+          photoCacheRef.current.set(selectedIndex, url)
+          openPopup("ready", url)
+        } else {
+          openPopup("empty")
+        }
+      }
+
+      if (r.placeId) {
+        placesService.getDetails(
+          { placeId: r.placeId, fields: ["photos"] },
+          (place, status) => {
+            if (
+              status === google.maps.places.PlacesServiceStatus.OK &&
+              place?.photos
+            ) {
+              finish(pickPhotoUrl(place.photos))
+            } else {
+              finish(null)
+            }
+          },
+        )
+      } else {
+        placesService.findPlaceFromQuery(
+          {
+            query: r.address
+              ? `${r.name}, ${r.address}`
+              : `${r.name}, Los Angeles, CA`,
+            fields: ["photos", "place_id"],
+            locationBias: new google.maps.LatLng(r.lat, r.lng),
+          },
+          (results, status) => {
+            if (
+              status === google.maps.places.PlacesServiceStatus.OK &&
+              results?.[0]?.photos
+            ) {
+              finish(pickPhotoUrl(results[0].photos))
+              return
+            }
+
+            const placeId = results?.[0]?.place_id
+            if (!placeId) {
+              finish(null)
+              return
+            }
+
+            placesService.getDetails(
+              { placeId, fields: ["photos"] },
+              (place, detailsStatus) => {
+                if (
+                  detailsStatus ===
+                    google.maps.places.PlacesServiceStatus.OK &&
+                  place?.photos
+                ) {
+                  finish(pickPhotoUrl(place.photos))
+                } else {
+                  finish(null)
+                }
+              },
+            )
+          },
+        )
+      }
+
+      return () => {
+        cancelled = true
+      }
     }
 
     listRefs.current[selectedIndex]?.scrollIntoView({

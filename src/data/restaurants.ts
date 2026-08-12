@@ -9,6 +9,10 @@ export interface Restaurant {
   phone: string
   lat: number
   lng: number
+  /** Google Place ID — optional, helps load the right photo */
+  placeId?: string
+  /** Manual photo URL — optional, skips Google lookup if set */
+  photoUrl?: string
 }
 
 export const ACCENT_COLOR = "#D8232A"
