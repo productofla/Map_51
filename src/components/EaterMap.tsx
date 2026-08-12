@@ -62,7 +62,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
             lat: restaurants[0]?.lat ?? 34.05,
             lng: restaurants[0]?.lng ?? -118.24,
           },
-          zoom: 12,
+          zoom: 16,
           disableDefaultUI: true,
           zoomControl: true,
           styles: [
@@ -118,7 +118,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
             className={styles.accentBar}
             style={{ background: accentColor }}
           />
-          <p className={styles.kicker}>Los Angeles</p>
+          <p className={styles.kicker}>Chinatown</p>
           <h1 className={styles.headline}>Where to eat right now</h1>
         </header>
 
@@ -141,9 +141,11 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
             ) : null}
             <div className={styles.contact}>
               <p>{selected.address}</p>
-              <a href={`tel:${selected.phone.replace(/\s/g, "")}`}>
-                {selected.phone}
-              </a>
+              {selected.phone ? (
+                <a href={`tel:${selected.phone.replace(/\s/g, "")}`}>
+                  {selected.phone}
+                </a>
+              ) : null}
             </div>
           </article>
         ) : null}
