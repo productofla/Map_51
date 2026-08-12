@@ -61,16 +61,6 @@ function googleMapsUrl(restaurant: Restaurant): string {
   return `https://www.google.com/maps/search/?api=1&query=${query}`
 }
 
-function buildInfoWindowHeader(restaurant: Restaurant): HTMLElement {
-  const link = document.createElement("a")
-  link.className = "map-info-link"
-  link.href = googleMapsUrl(restaurant)
-  link.target = "_blank"
-  link.rel = "noopener noreferrer"
-  link.textContent = "Open in Google Maps"
-  return link
-}
-
 function buildInfoWindowContent(
   restaurant: Restaurant,
   accentColor: string,
@@ -84,10 +74,13 @@ function buildInfoWindowContent(
     photoBlock = `<img class="map-info-photo" src="${photoUrl}" alt="${escapeHtml(restaurant.name)}" />`
   }
 
+  const mapsUrl = googleMapsUrl(restaurant)
+
   return `
     <div class="map-info-window">
       <div class="map-info-title" style="color:${accentColor}">${escapeHtml(restaurant.name)}</div>
-      <div class="map-info-meta">${escapeHtml(restaurant.establishmentType)} · ${escapeHtml(restaurant.price)}</div>
+      <div class="map-info-kicker">${escapeHtml(restaurant.establishmentType)} · ${escapeHtml(restaurant.price)}</div>
+      <a class="map-info-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
       ${photoBlock}
     </div>
   `
@@ -138,6 +131,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
 
         infoWindowRef.current = new g.maps.InfoWindow({
           pixelOffset: new g.maps.Size(0, -4),
+          headerDisabled: true,
         })
 
         markersRef.current = restaurants.map((r, i) => {
@@ -180,9 +174,6 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
     if (!r || !marker || !map || !infoWindow) return
 
     const openPopup = (photoState: PhotoState, photoUrl?: string) => {
-      infoWindow.setOptions({
-        headerContent: buildInfoWindowHeader(r),
-      })
       infoWindow.setContent(
         buildInfoWindowContent(r, accentColor, photoState, photoUrl),
       )
