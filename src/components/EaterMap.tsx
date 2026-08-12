@@ -8,6 +8,14 @@ interface EaterMapProps {
   accentColor: string
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
 function loadGoogleMaps(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve()
@@ -41,11 +49,41 @@ function pinIcon(selected: boolean, accentColor: string): google.maps.Icon {
   }
 }
 
+function buildInfoWindowContent(
+  restaurant: Restaurant,
+  apiKey: string,
+  accentColor: string,
+): string {
+  const query = encodeURIComponent(
+    `${restaurant.name}, ${restaurant.address || `${restaurant.lat},${restaurant.lng}`}`,
+  )
+  const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${query}&zoom=17`
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`
+
+  return `
+    <div class="map-info-window">
+      <div class="map-info-title" style="color:${accentColor}">${escapeHtml(restaurant.name)}</div>
+      <div class="map-info-meta">${escapeHtml(restaurant.neighborhood)} · ${escapeHtml(restaurant.price)}</div>
+      <iframe
+        class="map-info-embed"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        src="${embedUrl}"
+        title="${escapeHtml(restaurant.name)} on Google Maps"
+      ></iframe>
+      <a class="map-info-link" style="color:${accentColor}" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">
+        Open in Google Maps →
+      </a>
+    </div>
+  `
+}
+
 export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<google.maps.Marker[]>([])
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
   const listRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
@@ -71,6 +109,10 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
           ],
         })
 
+        infoWindowRef.current = new g.maps.InfoWindow({
+          pixelOffset: new g.maps.Size(0, -4),
+        })
+
         markersRef.current = restaurants.map((r, i) => {
           const marker = new g.maps.Marker({
             position: { lat: r.lat, lng: r.lng },
@@ -88,6 +130,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
 
     return () => {
       cancelled = true
+      infoWindowRef.current?.close()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, JSON.stringify(restaurants)])
@@ -98,15 +141,27 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
     })
 
     const r = restaurants[selectedIndex]
+    const marker = markersRef.current[selectedIndex]
+
     if (r && mapInstance.current) {
       mapInstance.current.panTo({ lat: r.lat, lng: r.lng })
+    }
+
+    if (r && marker && mapInstance.current && infoWindowRef.current && apiKey) {
+      infoWindowRef.current.setContent(
+        buildInfoWindowContent(r, apiKey, accentColor),
+      )
+      infoWindowRef.current.open({
+        map: mapInstance.current,
+        anchor: marker,
+      })
     }
 
     listRefs.current[selectedIndex]?.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
     })
-  }, [selectedIndex, accentColor, restaurants])
+  }, [selectedIndex, accentColor, restaurants, apiKey])
 
   const selected = restaurants[selectedIndex]
 

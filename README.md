@@ -16,7 +16,7 @@ Open [http://localhost:5173](http://localhost:5173).
 ## Google Maps API key
 
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/).
-2. Enable **Maps JavaScript API**.
+2. Enable **Maps JavaScript API** and **Maps Embed API** (the mini map popup on each pin uses Embed).
 3. Create an API key and restrict it to your domain (or `localhost` for dev).
 4. Set `VITE_GOOGLE_MAPS_API_KEY=your_key_here` in `.env`.
 
