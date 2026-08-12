@@ -51,6 +51,30 @@ function pinIcon(selected: boolean, accentColor: string): google.maps.Icon {
 
 type PhotoState = "loading" | "ready" | "empty"
 
+function googleMapsUrl(restaurant: Restaurant): string {
+  if (restaurant.googleMapsUrl) return restaurant.googleMapsUrl
+
+  const query = restaurant.address
+    ? encodeURIComponent(`${restaurant.name}, ${restaurant.address}`)
+    : `${restaurant.lat},${restaurant.lng}`
+
+  return `https://www.google.com/maps/search/?api=1&query=${query}`
+}
+
+function buildInfoWindowHeader(
+  restaurant: Restaurant,
+  accentColor: string,
+): HTMLElement {
+  const link = document.createElement("a")
+  link.className = "map-info-link"
+  link.href = googleMapsUrl(restaurant)
+  link.target = "_blank"
+  link.rel = "noopener noreferrer"
+  link.textContent = "Open in Google Maps"
+  link.style.color = accentColor
+  return link
+}
+
 function buildInfoWindowContent(
   restaurant: Restaurant,
   accentColor: string,
@@ -160,6 +184,9 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
     if (!r || !marker || !map || !infoWindow) return
 
     const openPopup = (photoState: PhotoState, photoUrl?: string) => {
+      infoWindow.setOptions({
+        headerContent: buildInfoWindowHeader(r, accentColor),
+      })
       infoWindow.setContent(
         buildInfoWindowContent(r, accentColor, photoState, photoUrl),
       )

@@ -13,6 +13,8 @@ export interface Restaurant {
   placeId?: string
   /** Manual photo URL — optional, skips Google lookup if set */
   photoUrl?: string
+  /** Direct Google Maps URL for this place — optional */
+  googleMapsUrl?: string
 }
 
 export const ACCENT_COLOR = "#D8232A"
@@ -31,6 +33,8 @@ export const RESTAURANTS: Restaurant[] = [
     phone: "",
     lat: 34.064976,
     lng: -118.237872,
+    googleMapsUrl:
+      "https://www.google.com/maps/place/Damnoen+Saduak+(DS)+Night+Market/@34.064976,-118.237872,17z",
   },
   {
     name: "Melody Lounge",
@@ -44,6 +48,8 @@ export const RESTAURANTS: Restaurant[] = [
     phone: "+1 213 625 2823",
     lat: 34.0656168,
     lng: -118.2383298,
+    googleMapsUrl:
+      "https://www.google.com/maps/place/Melody+Lounge/@34.0656168,-118.2383298,17z",
   },
   {
     name: "Café Triste",
@@ -57,6 +63,8 @@ export const RESTAURANTS: Restaurant[] = [
     phone: "+1 213 278 0820",
     lat: 34.0663681,
     lng: -118.2359281,
+    googleMapsUrl:
+      "https://www.google.com/maps/place/CAF%C3%89+TRISTE/@34.0663681,-118.2359281,17z",
   },
   {
     name: "Evangeline Swamp Room",
@@ -70,6 +78,8 @@ export const RESTAURANTS: Restaurant[] = [
     phone: "+1 213 620 0461",
     lat: 34.0600433,
     lng: -118.2379737,
+    googleMapsUrl:
+      "https://www.google.com/maps/place/Evangeline+Swamp+Room/@34.0600433,-118.2379737,17z",
   },
   {
     name: "Chinatown Station",
@@ -83,6 +93,8 @@ export const RESTAURANTS: Restaurant[] = [
     phone: "",
     lat: 34.0639297,
     lng: -118.2359236,
+    googleMapsUrl:
+      "https://www.google.com/maps/place/Chinatown+Station/@34.0639297,-118.2359236,17z",
   },
   {
     name: "Big Chungus Statue",
@@ -96,5 +108,7 @@ export const RESTAURANTS: Restaurant[] = [
     phone: "",
     lat: 34.0635423,
     lng: -118.2362604,
+    googleMapsUrl:
+      "https://www.google.com/maps/place/Big+Chungus+Statue/@34.0635423,-118.2362604,17z",
   },
 ]
