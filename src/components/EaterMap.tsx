@@ -171,7 +171,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
               ctx.photoUrl,
             ),
           )
-          if (infoWindow.getMap()) {
+          if (infoWindow.isOpen) {
             infoWindow.open({ map, anchor: marker })
           }
         }
