@@ -61,17 +61,13 @@ function googleMapsUrl(restaurant: Restaurant): string {
   return `https://www.google.com/maps/search/?api=1&query=${query}`
 }
 
-function buildInfoWindowHeader(
-  restaurant: Restaurant,
-  accentColor: string,
-): HTMLElement {
+function buildInfoWindowHeader(restaurant: Restaurant): HTMLElement {
   const link = document.createElement("a")
   link.className = "map-info-link"
   link.href = googleMapsUrl(restaurant)
   link.target = "_blank"
   link.rel = "noopener noreferrer"
   link.textContent = "Open in Google Maps"
-  link.style.color = accentColor
   return link
 }
 
@@ -91,7 +87,7 @@ function buildInfoWindowContent(
   return `
     <div class="map-info-window">
       <div class="map-info-title" style="color:${accentColor}">${escapeHtml(restaurant.name)}</div>
-      <div class="map-info-meta">${escapeHtml(restaurant.neighborhood)} · ${escapeHtml(restaurant.price)}</div>
+      <div class="map-info-meta">${escapeHtml(restaurant.establishmentType)} · ${escapeHtml(restaurant.price)}</div>
       ${photoBlock}
     </div>
   `
@@ -185,7 +181,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
 
     const openPopup = (photoState: PhotoState, photoUrl?: string) => {
       infoWindow.setOptions({
-        headerContent: buildInfoWindowHeader(r, accentColor),
+        headerContent: buildInfoWindowHeader(r),
       })
       infoWindow.setContent(
         buildInfoWindowContent(r, accentColor, photoState, photoUrl),
@@ -300,7 +296,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
           <article className={styles.detail} key={selected.name}>
             <h2 className={styles.restaurantName}>{selected.name}</h2>
             <p className={styles.meta}>
-              <span>{selected.neighborhood}</span>
+              <span>{selected.establishmentType}</span>
               <span aria-hidden="true"> · </span>
               <span>{selected.price}</span>
             </p>
@@ -347,7 +343,7 @@ export function EaterMap({ apiKey, restaurants, accentColor }: EaterMapProps) {
               <span>
                 {r.name}
                 <span className={styles.listNeighborhood}>
-                  {r.neighborhood}
+                  {r.establishmentType}
                 </span>
               </span>
             </button>

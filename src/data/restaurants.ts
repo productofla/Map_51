@@ -1,6 +1,7 @@
 export interface Restaurant {
   name: string
   neighborhood: string
+  establishmentType: string
   price: string
   openFor: string
   description: string
@@ -23,6 +24,7 @@ export const RESTAURANTS: Restaurant[] = [
   {
     name: "Damnoen Saduak (DS) Night Market",
     neighborhood: "Chinatown",
+    establishmentType: "Night market",
     price: "$",
     openFor: "Fri–Sat 5–11pm, Sun 4–10pm",
     description:
@@ -39,6 +41,7 @@ export const RESTAURANTS: Restaurant[] = [
   {
     name: "Melody Lounge",
     neighborhood: "Chinatown",
+    establishmentType: "Dive bar",
     price: "$$",
     openFor: "Daily 5pm–2am",
     description:
@@ -54,6 +57,7 @@ export const RESTAURANTS: Restaurant[] = [
   {
     name: "Café Triste",
     neighborhood: "Chinatown",
+    establishmentType: "Wine bar",
     price: "$$",
     openFor: "Wed–Sun, evening",
     description:
@@ -69,6 +73,7 @@ export const RESTAURANTS: Restaurant[] = [
   {
     name: "Evangeline Swamp Room",
     neighborhood: "Chinatown",
+    establishmentType: "Bar & restaurant",
     price: "$$",
     openFor: "Wed–Sun, evening",
     description:
@@ -84,6 +89,7 @@ export const RESTAURANTS: Restaurant[] = [
   {
     name: "Chinatown Station",
     neighborhood: "Chinatown",
+    establishmentType: "Metro station",
     price: "—",
     openFor: "Daily",
     description:
@@ -99,6 +105,7 @@ export const RESTAURANTS: Restaurant[] = [
   {
     name: "Big Chungus Statue",
     neighborhood: "Chinatown",
+    establishmentType: "Landmark",
     price: "—",
     openFor: "Always",
     description:
